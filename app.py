@@ -8,6 +8,8 @@ import numpy as np
 
 app = dash.Dash(__name__)
 
+server = app.server
+
 # =======================================
 # Dados principais
 # =======================================
