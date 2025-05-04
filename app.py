@@ -8,8 +8,6 @@ import numpy as np
 
 app = dash.Dash(__name__)
 
-server = app.server
-
 # =======================================
 # Dados principais
 # =======================================
@@ -126,7 +124,43 @@ df_disp = pd.DataFrame({
     'Concerto Jovem': ['Não', 'Não', 'Não', 'Sim', 'Sim']
 })
 
-# Layout repaginado
+anos = [2020, 2021, 2022, 2023, 2024]
+atividades_por_ano = {
+    2020: ["Seminário"],
+    2021: ["OLE", "BFE", "Encontro Gímnico", "Apresentação de Livro", "EXPO"],
+    2022: ["OLE", "BFE", "Encontro Gímnico", "Apresentação de Livro", "EXPO"],
+    2023: ["OLE", "BFE", "Seminário", "Encontro Gímnico", "Apresentação de Livro", "EXPO", "Música de Câmara",
+           "Demonstração Cinotécnica", "Salto de Paraquedistas Noturno", "Fogo de Artifício", "Corrida Solidária", "Concerto Jovem"],
+    2024: ["BFE", "EXPO", "Salto de Paraquedistas Noturno", "Radical Adventure", "Concerto Jovem"]
+}
+
+figs_pizza = {}
+for ano in anos:
+    atividades = atividades_por_ano[ano]
+    df_pizza = pd.DataFrame({
+        'Atividade': atividades,
+        'Percentagem': [100 / len(atividades)] * len(atividades)
+    })
+    # Cria o pie chart:
+    fig = px.pie(
+        df_pizza,
+        names='Atividade',
+        values='Percentagem',
+        title=f"Distribuição das Atividades - {ano}"
+    )
+    # Depois ajusta o layout:
+    fig.update_layout(
+        title={
+            'text': f"Distribuição das Atividades - {ano}",
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'size': 20, 'color': 'black'}
+        },
+        margin={'t': 40, 'b': 20, 'l': 20, 'r': 20},
+        paper_bgcolor='white'
+    )
+    figs_pizza[str(ano)] = fig
+    
 app.layout = html.Div(style={
     'backgroundColor': '#556B2F', 'padding': '20px', 'fontFamily': 'Arial, sans-serif'
 }, children=[
@@ -165,9 +199,36 @@ app.layout = html.Div(style={
         dcc.Graph(id='grafico-disp')
     ], style={'marginBottom': '50px'}),
 
-    dcc.Graph(id='grafico-mapa', figure=fig_mapa)
-])
+        dcc.Graph(id='grafico-mapa', figure=fig_mapa),
 
+    html.Div([
+    # --- Pizza ocupa 60% ---
+    html.Div([
+        html.Label("Selecionar Ano da Cerimónia:", 
+            style={'fontWeight':'bold','fontSize':'18px','color':'black','marginBottom':'10px'}
+        ),
+        dcc.Dropdown(
+            id='dropdown-pizza',
+            options=[{'label':str(ano),'value':str(ano)} for ano in anos],
+            value='2020',
+            style={'flex': 1, 'textAlign': 'center'}
+                            ),
+        dcc.Graph(id='grafico-pizza', config={'displayModeBar':False})
+    ], style={'flex':'0 0 60%','paddingRight':'10px'}),
+
+    html.Div([
+        dcc.Graph(id='grafico-gauge')
+    ], style={'flex': 1, 'textAlign': 'center'})
+], style={
+    'display': 'flex',
+    'justifyContent': 'space-around',
+    'alignItems': 'center',
+    'backgroundColor': 'white',
+    'padding': '20px',
+    'borderRadius': '10px',
+    'boxShadow': '0 0 10px rgba(0, 0, 0, 0.2)'
+})
+])
 # Callbacks
 @app.callback(
     Output('grafico-linha', 'figure'),
@@ -190,48 +251,88 @@ def update_line_graph(regiao):
     
     return fig
 
-
 @app.callback(
     Output('grafico-disp', 'figure'),
     Input('disp-xaxis-dropdown', 'value')
 )
-def update_disp_graph(xaxis_value):
-    df_plot = df_disp.copy()
-    df_plot = df_plot.sort_values(by='Candidatos', ascending=False).reset_index(drop=True)
+def update_disp_graph(_):
+    df_plot = df_disp[['Região', 'Candidatos', 'Duração']].copy()
 
-    if xaxis_value == 'Duração':
-        df_plot['xvalor'] = [7, 5, 5, 6, 6]
-
-    cores = ['#FF9999', '#FFD699', '#FFFF99', '#B6E2B6', '#B6E2B6']
-    tamanhos = [80, 60, 40, 20, 20]
-
-    if df_plot[xaxis_value].dtype == 'O':
-        df_plot['xvalor'] = df_plot[xaxis_value].map({'Não': 0, 'Sim': 1})
-        tickvals = [0, 1]
-        ticktext = ['Não', 'Sim']
-    else:
-        df_plot['xvalor'] = df_plot[xaxis_value]
-        tickvals = None
-        ticktext = None
-
-    fig_disp = go.Figure(data=go.Scatter(
-        x=df_plot['xvalor'],
-        y=df_plot['Candidatos'],
-        mode='markers',
-        marker=dict(size=tamanhos, color=cores),
-        text=df_plot['Região']
-    ))
-
-    fig_disp.update_layout(
-        title=f'Relação entre {xaxis_value} e o Número de Candidatos',
-        xaxis_title=xaxis_value,
-        yaxis_title='Número de Candidatos'
+    fig = px.bar(
+        df_plot,
+        x='Duração',
+        y='Candidatos',
+        color='Região',
+        text='Candidatos',
+        title='Número de Candidatos por Duração das Celebrações',
+        labels={'Duração': 'Duração (dias)', 'Candidatos': 'Nº de Candidatos'}
     )
 
-    if tickvals is not None:
-        fig_disp.update_layout(xaxis=dict(tickvals=tickvals, ticktext=ticktext))
+    fig.update_traces(textposition='outside')
+    fig.update_layout(barmode='group')
 
-    return fig_disp
+    return fig
+
+@app.callback(
+    Output('grafico-pizza', 'figure'),
+    Input('dropdown-pizza', 'value')
+)
+def update_pizza(ano):
+    fig = figs_pizza[ano]
+    fig.update_layout(
+        title={
+            'text': f"Distribuição das Atividades - {ano}",
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'size': 20, 'color': 'black'}
+        },
+        margin={'t': 40, 'b': 20, 'l': 20, 'r': 20},
+        paper_bgcolor='white'
+    )
+    return fig
+
+candidatos_por_ano = {
+    '2020': 747,
+    '2021': 744,
+    '2022': 528,
+    '2023': 511,
+    '2024': 565
+}
+
+@app.callback(
+    Output('grafico-gauge', 'figure'),
+    Input('dropdown-pizza', 'value')
+)
+def update_gauge(ano):
+    valor = candidatos_por_ano[ano]
+    fig = go.Figure(go.Indicator(
+        mode="gauge",
+        value=valor,
+        gauge={
+            'axis': {'range': [500, 800], 'tickfont': {'color': 'black'}},
+            'bar': {'color': "black", 'thickness': 0.1},
+            'steps': [
+                {'range': [500, 600], 'color': '#FF6666'},  # vermelho
+                {'range': [600, 700], 'color': '#FFE066'},  # amarelo
+                {'range': [700, 800], 'color': '#A8E6A3'}   # verde
+            ],
+            'borderwidth': 2,
+            'bordercolor': "black"
+        },
+        domain={'x': [0, 1], 'y': [0, 1]}
+    ))
+    fig.update_layout(
+        title={
+            'text': f"Número de Candidatos em {ano}",
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'size': 20, 'color': 'black'}
+        },
+        height=300,
+        paper_bgcolor='white',
+        margin={'t': 40, 'b': 20, 'l': 20, 'r': 20}
+    )
+    return fig
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
