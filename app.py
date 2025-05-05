@@ -44,7 +44,7 @@ df_linha = pd.DataFrame({
 df_barras = pd.DataFrame({
     'Região': regioes,
     'População Jovem': [3412, 8591, 6472, 8405, 3969],
-    'Likes': [1500, 1000, 2036, 1710, 1698],
+    'Likes': [0, 3585, 2036, 1710, 1698],
     'Candidatos': [221, 144, 165, 68, 33]
 })
 
@@ -104,6 +104,8 @@ fig_mapa.update_traces(marker=dict(
     showscale=True
 ))
 
+# === Depois de montar df_mapa, antes do app.layout ===
+
 # Dados para gráfico de dispersão
 df_disp = pd.DataFrame({
     'Região': regioes,
@@ -134,32 +136,49 @@ atividades_por_ano = {
     2024: ["BFE", "EXPO", "Salto de Paraquedistas Noturno", "Radical Adventure", "Concerto Jovem"]
 }
 
+# 1) Define o mapeamento ano → nº de candidatos aqui, fora de qualquer loop
+candidatos_por_ano = {
+    '2020': 747,
+    '2021': 744,
+    '2022': 528,
+    '2023': 511,
+    '2024': 565
+}
+
+# ──────────────── definir antes do loop ────────────────
+# ──────────────── antes do app.layout ────────────────
+import plotly.express as px
+
+# … lá em cima, antes do app.layout …
+
 figs_pizza = {}
-for ano in anos:
-    atividades = atividades_por_ano[ano]
+for ano, atividades in atividades_por_ano.items():
     df_pizza = pd.DataFrame({
         'Atividade': atividades,
-        'Percentagem': [100 / len(atividades)] * len(atividades)
+        'Percentagem': [100.0 / len(atividades)] * len(atividades)
     })
-    # Cria o pie chart:
-    fig = px.pie(
+    fig_p = px.pie(
         df_pizza,
         names='Atividade',
         values='Percentagem',
-        title=f"Distribuição das Atividades - {ano}"
+        height=350,
+        width=350,
+        color_discrete_sequence=px.colors.qualitative.Pastel  # <— aqui
     )
-    # Depois ajusta o layout:
-    fig.update_layout(
+    fig_p.update_traces(textinfo='percent')
+    fig_p.update_layout(
         title={
-            'text': f"Distribuição das Atividades - {ano}",
-            'x': 0.5,
-            'xanchor': 'center',
+            'text': f"Distribuição das Atividades – {ano}",
+            'x': 0.5, 'xanchor': 'center',
             'font': {'size': 20, 'color': 'black'}
         },
         margin={'t': 40, 'b': 20, 'l': 20, 'r': 20},
-        paper_bgcolor='white'
+        paper_bgcolor='white',
+        showlegend=True
     )
-    figs_pizza[str(ano)] = fig
+    figs_pizza[str(ano)] = fig_p
+
+# ─────────────────────────────────────────
     
 app.layout = html.Div(style={
     'backgroundColor': '#556B2F', 'padding': '20px', 'fontFamily': 'Arial, sans-serif'
@@ -186,6 +205,9 @@ app.layout = html.Div(style={
         dcc.Graph(id='grafico-linha')
     ], style={'marginBottom': '50px'}),
 
+dcc.Graph(id='grafico-mapa', figure=fig_mapa),
+
+
     dcc.Graph(id='grafico-barras', figure=fig_barras, style={'marginBottom': '50px'}),
 
     html.Div([
@@ -199,36 +221,79 @@ app.layout = html.Div(style={
         dcc.Graph(id='grafico-disp')
     ], style={'marginBottom': '50px'}),
 
-        dcc.Graph(id='grafico-mapa', figure=fig_mapa),
 
+       # Dropdown para escolher o ano da cerimónia (aciona pizza & gauge)
     html.Div([
-    # --- Pizza ocupa 60% ---
-    html.Div([
-        html.Label("Selecionar Ano da Cerimónia:", 
-            style={'fontWeight':'bold','fontSize':'18px','color':'black','marginBottom':'10px'}
-        ),
+        html.Label("Selecionar Ano da Cerimónia:", style={
+            'fontWeight': 'bold', 'fontSize': '18px', 'color': 'white',
+            'marginBottom': '10px'
+        }),
         dcc.Dropdown(
             id='dropdown-pizza',
-            options=[{'label':str(ano),'value':str(ano)} for ano in anos],
+            options=[{'label': str(ano), 'value': str(ano)} for ano in anos],
             value='2020',
-            style={'flex': 1, 'textAlign': 'center'}
-                            ),
-        dcc.Graph(id='grafico-pizza', config={'displayModeBar':False})
-    ], style={'flex':'0 0 60%','paddingRight':'10px'}),
+            style={'width': '200px', 'marginBottom': '20px'}
+        )
+    ], style={'marginBottom': '20px'}),
+   
+    # … logo após o Dropdown de ano …
 
-    html.Div([
-        dcc.Graph(id='grafico-gauge')
-    ], style={'flex': 1, 'textAlign': 'center'})
-], style={
-    'display': 'flex',
-    'justifyContent': 'space-around',
-    'alignItems': 'center',
-    'backgroundColor': 'white',
-    'padding': '20px',
-    'borderRadius': '10px',
-    'boxShadow': '0 0 10px rgba(0, 0, 0, 0.2)'
-})
-])
+# … dentro do app.layout, no lugar do seu Div de pizza+gauge …
+
+# … logo após o Div do dropdown de ano …
+
+html.Div(
+    [
+        # coluna da pizza + legenda em baixo
+         html.Div([
+                dcc.Graph(
+                    id='grafico-pizza',
+                    config={'displayModeBar': False},
+                    style={'width': '350px', 'height': '350px'}
+                ),
+                html.Div(
+                    id='pizza-legend',
+                    style={
+                        'width': '350px',
+                        'height': '120px',
+                        'overflowY': 'auto',
+                        'marginTop': '10px'
+                    }
+                )
+            ], style={
+                'flex': '0 0 350px',
+                'display': 'flex',
+                'flexDirection': 'column',
+                'alignItems': 'center'
+            }),
+
+        # coluna do gauge
+        html.Div(
+            dcc.Graph(
+                id='grafico-gauge',
+                style={'width': '350px', 'height': '350px'}
+            ),
+            style={
+                'flex': '0 0 350px',
+                'display': 'flex',
+                'justifyContent': 'center',
+                'alignItems': 'center'
+            }
+        )
+    ],
+    style={
+        'display': 'flex',
+        'justifyContent': 'space-around',
+        'backgroundColor': 'white',
+        'padding': '20px',
+        'borderRadius': '10px',
+        'boxShadow': '0 0 10px rgba(0,0,0,0.2)',
+        'marginBottom': '50px'
+    }
+),
+
+])  # <--- fecha o app.layout aqui, SEM MAIS html.Div nem style
+
 # Callbacks
 @app.callback(
     Output('grafico-linha', 'figure'),
@@ -256,81 +321,86 @@ def update_line_graph(regiao):
     Input('disp-xaxis-dropdown', 'value')
 )
 def update_disp_graph(_):
-    df_plot = df_disp[['Região', 'Candidatos', 'Duração']].copy()
+    df_plot = df_disp[['Região', 'Candidatos', 'Duração']]
 
-    fig = px.bar(
+    fig = px.scatter(
         df_plot,
         x='Duração',
         y='Candidatos',
         color='Região',
-        text='Candidatos',
+        size='Candidatos',
+        hover_name='Região',
         title='Número de Candidatos por Duração das Celebrações',
         labels={'Duração': 'Duração (dias)', 'Candidatos': 'Nº de Candidatos'}
     )
 
-    fig.update_traces(textposition='outside')
-    fig.update_layout(barmode='group')
+    # só markers, sem texto
+    fig.update_traces(mode='markers')
+
+    fig.update_layout(
+        xaxis=dict(dtick=1),
+        legend_title_text='Região'
+    )
 
     return fig
 
+from dash.dependencies import Input, Output
+
 @app.callback(
-    Output('grafico-pizza', 'figure'),
+    [ Output('grafico-pizza', 'figure'),
+      Output('pizza-legend', 'children') ],
     Input('dropdown-pizza', 'value')
 )
 def update_pizza(ano):
     fig = figs_pizza[ano]
-    fig.update_layout(
-        title={
-            'text': f"Distribuição das Atividades - {ano}",
-            'x': 0.5,
-            'xanchor': 'center',
-            'font': {'size': 20, 'color': 'black'}
-        },
-        margin={'t': 40, 'b': 20, 'l': 20, 'r': 20},
-        paper_bgcolor='white'
-    )
-    return fig
+    fig.update_layout(showlegend=False)
 
-candidatos_por_ano = {
-    '2020': 747,
-    '2021': 744,
-    '2022': 528,
-    '2023': 511,
-    '2024': 565
-}
+    trace = fig.data[0]
+    # fallback para a mesma paleta que usaste lá em cima
+    palette = px.colors.qualitative.Pastel
+    colors = list(trace.marker.colors) if trace.marker.colors is not None else palette
+
+    legend_items = []
+    for lbl, val, col in zip(trace.labels, trace.values, colors):
+        legend_items.append(
+            html.Div([
+                html.Span(style={
+                    'display': 'inline-block',
+                    'width': '12px', 'height': '12px',
+                    'backgroundColor': col,
+                    'marginRight': '6px'
+                }),
+                html.Span(f"{lbl}: {val:.0f}%")
+            ], style={'marginBottom': '4px'})
+        )
+
+    return fig, legend_items
 
 @app.callback(
-    Output('grafico-gauge', 'figure'),
-    Input('dropdown-pizza', 'value')
+    Output('grafico-gauge','figure'),
+    Input('dropdown-pizza','value')
 )
 def update_gauge(ano):
-    valor = candidatos_por_ano[ano]
+    val = candidatos_por_ano[ano]
     fig = go.Figure(go.Indicator(
-        mode="gauge",
-        value=valor,
+        mode="gauge", value=val,
         gauge={
-            'axis': {'range': [500, 800], 'tickfont': {'color': 'black'}},
-            'bar': {'color': "black", 'thickness': 0.1},
-            'steps': [
-                {'range': [500, 600], 'color': '#FF6666'},  # vermelho
-                {'range': [600, 700], 'color': '#FFE066'},  # amarelo
-                {'range': [700, 800], 'color': '#A8E6A3'}   # verde
+            'axis':{'range':[500,800],'tickfont':{'color':'black'}},
+            'bar':{'color':'black','thickness':0.1},
+            'steps':[
+                {'range':[500,600],'color':'#FF6666'},
+                {'range':[600,700],'color':'#FFE066'},
+                {'range':[700,800],'color':'#A8E6A3'}
             ],
-            'borderwidth': 2,
-            'bordercolor': "black"
-        },
-        domain={'x': [0, 1], 'y': [0, 1]}
+            'borderwidth':2,'bordercolor':'black'
+        }
     ))
     fig.update_layout(
-        title={
-            'text': f"Número de Candidatos em {ano}",
-            'x': 0.5,
-            'xanchor': 'center',
-            'font': {'size': 20, 'color': 'black'}
-        },
-        height=300,
+        height=350, width=350,
+        title={'text':f"Número de Candidatos",'x':0.5,'xanchor':'center',
+               'font':{'size':20,'color':'black'}},
         paper_bgcolor='white',
-        margin={'t': 40, 'b': 20, 'l': 20, 'r': 20}
+        margin={'t':40,'b':20,'l':20,'r':20}
     )
     return fig
 
