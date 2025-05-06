@@ -8,10 +8,6 @@ import numpy as np
 
 app = dash.Dash(__name__)
 
-# =======================================
-# Dados principais
-# =======================================
-
 regioes = ['Trás-os-Montes', 'Baixo Vouga', 'Lezíria do Tejo', 'Minho-Lima', 'Beira Interior Norte']
 
 # Dados para gráfico de linha
@@ -116,8 +112,6 @@ fig_mapa.update_traces(marker=dict(
     showscale=True
 ))
 
-# === Depois de montar df_mapa, antes do app.layout ===
-
 # Dados para gráfico de dispersão
 df_disp = pd.DataFrame({
     'Região': regioes,
@@ -148,7 +142,6 @@ atividades_por_ano = {
     2024: ["BFE", "EXPO", "Salto de Paraquedistas Noturno", "Radical Adventure", "Concerto Jovem"]
 }
 
-# 1) Define o mapeamento ano → nº de candidatos aqui, fora de qualquer loop
 candidatos_por_ano = {
     '2020': 747,
     '2021': 744,
@@ -157,7 +150,6 @@ candidatos_por_ano = {
     '2024': 565
 }
 
-# ──────────────── definir antes do loop ────────────────
 
 import plotly.express as px
 
@@ -188,8 +180,6 @@ for ano, atividades in atividades_por_ano.items():
     )
     figs_pizza[str(ano)] = fig_p
 
-# ─────────────────────────────────────────
-    
 _th_style = {
     'fontWeight': 'bold',
     'textAlign': 'center',
@@ -219,6 +209,7 @@ app.layout = html.Div(style={
     'padding': '20px',
     'fontFamily': 'Arial, sans-serif'
 }, children=[
+    
     html.H1(
         "CELEBRAÇÕES DO DIA DO EXÉRCITO: IMPACTO NO RECRUTAMENTO",
         style={
@@ -230,7 +221,8 @@ app.layout = html.Div(style={
     ),
 
     html.Div([
-        html.Label("Selecionar Região:", style={'fontWeight': 'bold', 'fontSize': '18px', 'color': 'white'}),
+        html.Label("Selecionar Região:", style={
+            'fontWeight': 'bold', 'fontSize': '18px', 'color': 'white'}),
         dcc.Dropdown(
             id='grafico-dropdown',
             options=[{'label': r, 'value': r} for r in regioes] + [{'label': 'Todas as regiões', 'value': 'Todas as regiões'}],
@@ -241,49 +233,6 @@ app.layout = html.Div(style={
     ], style={'marginBottom': '50px'}),
 
     dcc.Graph(id='grafico-mapa', figure=fig_mapa),
-
-html.Div([
-    html.Label("Tabela de Recrutamento", style={
-        'fontWeight': 'bold', 'fontSize': '20px', 'color': 'white',
-        'marginBottom': '10px'
-    }),
-    dcc.Dropdown(
-        id='dropdown-ano-tabela',
-        options=[{'label': str(ano), 'value': ano} for ano in df_tabela['DATA'].unique()],
-        value=2020,
-        style={'width': '200px', 'marginBottom': '20px'}
-    ),
-    dash_table.DataTable(
-        id='tabela-recrutamento',
-        columns=[{'name': col, 'id': col} for col in df_tabela.columns],
-        data=df_tabela[df_tabela['DATA'] == 2020].to_dict('records'),
-        editable=True,
-        style_table={'overflowX': 'auto'},
-        style_cell={'textAlign': 'center', 'minWidth': '120px', 'padding': '5px'},
-        style_header={'backgroundColor': '#ccc', 'fontWeight': 'bold'},
-    )
-], style={
-    'marginTop': '30px',
-    'backgroundColor': 'white',
-    'padding': '20px',
-    'borderRadius': '10px',
-    'boxShadow': '0 0 10px rgba(0,0,0,0.1)',
-    'maxWidth': '95%',
-    'margin': '0 auto'
-}),
-
-    dcc.Graph(id='grafico-barras', figure=fig_barras, style={'marginBottom': '50px'}),
-
-    html.Div([
-        html.Label("Comparar Nº de Candidatos com:", style={'fontWeight': 'bold', 'fontSize': '18px', 'color': 'white'}),
-        dcc.Dropdown(
-            id='disp-xaxis-dropdown',
-            options=[{'label': col, 'value': col} for col in df_disp.columns if col != 'Região' and col != 'Candidatos'],
-            value='Duração',
-            style={'width': '60%', 'marginBottom': '30px'}
-        ),
-        dcc.Graph(id='grafico-disp')
-    ], style={'marginBottom': '50px'}),
 
     html.Div([
         html.Label("Selecionar Ano da Cerimónia:", style={
@@ -338,7 +287,54 @@ html.Div([
         'borderRadius': '10px',
         'boxShadow': '0 0 10px rgba(0,0,0,0.2)',
         'marginBottom': '50px'
-    })
+    }),
+
+    dcc.Graph(id='grafico-disp', style={'marginBottom': '50px'}),
+
+    html.Div([
+    dash_table.DataTable(
+        id='tabela-recrutamento',
+        columns=[{'name': col, 'id': col} for col in df_tabela.columns],
+        data=df_tabela.to_dict('records'),
+        editable=True,
+        style_table={'overflowX': 'auto'},
+        style_cell={
+            'textAlign': 'center',
+            'minWidth': '120px',
+            'padding': '5px',
+            'backgroundColor': '#E6F4EA',  # fundo verde claro para todas
+            'color': 'black'
+        },
+        style_header={
+            'backgroundColor': '#A2C8A3',
+            'fontWeight': 'bold'
+        },
+        style_data_conditional=[
+            {
+                'if': {'column_id': col},
+                'backgroundColor': '#D0EED7',
+                'fontWeight': 'bold'
+            }
+            for col in [
+                'TAXA POPUL. JOVEM',
+                'TAXA ANTES RECRUTAMENTO',
+                'TAXA DEPOIS RECRUTAMENTO',
+                'DIFERENÇA ENTRE TAXAS'
+            ]
+        ]
+    )
+], style={
+    'marginTop': '30px',
+    'marginBottom': '50px',
+    'backgroundColor': 'white',
+    'padding': '20px',
+    'borderRadius': '10px',
+    'boxShadow': '0 0 10px rgba(0,0,0,0.1)',
+    'maxWidth': '95%',
+    'margin': '0 auto'
+}),
+
+    dcc.Graph(id='grafico-barras', figure=fig_barras, style={'marginBottom': '50px'})
 ])
 
 # Callbacks
@@ -365,8 +361,8 @@ def update_line_graph(regiao):
 
 @app.callback(
     Output('grafico-disp', 'figure'),
-    Input('disp-xaxis-dropdown', 'value')
-)
+    Input('grafico-dropdown', 'value')
+     )
 def update_disp_graph(_):
     df_plot = df_disp[['Região', 'Candidatos', 'Duração']]
 
@@ -450,14 +446,6 @@ def update_gauge(ano):
         margin={'t':40,'b':20,'l':20,'r':20}
     )
     return fig
-
-@app.callback(
-    Output('tabela-recrutamento', 'data'),
-    Input('dropdown-ano-tabela', 'value')
-)
-def update_tabela(ano):
-    dff = df_tabela[df_tabela['DATA'] == ano]
-    return dff.to_dict('records')
 
 if __name__ == '__main__':
     app.run(debug=True)
