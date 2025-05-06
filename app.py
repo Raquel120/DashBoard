@@ -1,5 +1,5 @@
 import dash
-from dash import dcc, html
+from dash import dcc, html, dash_table
 from dash.dependencies import Input, Output
 import plotly.express as px
 import plotly.graph_objects as go
@@ -43,9 +43,8 @@ df_linha = pd.DataFrame({
 
 df_barras = pd.DataFrame({
     'Região': regioes,
-    'População Jovem': [3412, 8591, 6472, 8405, 3969],
     'Likes': [0, 3585, 2036, 1710, 1698],
-    'Candidatos': [221, 144, 165, 68, 33]
+    'Candidatos': [264, 197, 217, 93, 33]
 })
 
 df_barras_long = df_barras.melt(id_vars='Região', var_name='Tipo', value_name='Valor')
@@ -62,6 +61,19 @@ fig_barras = px.bar(
 )
 fig_barras.update_traces(textposition='outside')
 fig_barras.update_layout(yaxis_title='Valor', xaxis_title='Região')
+
+df_tabela = pd.DataFrame({
+    "LOCAL": ["Trás-os Montes", "Região de Aveiro", "Lezíria do Tejo", "Minho - Lima", "Beiras e Serra da Estrela"],
+    "DATA": [2020, 2021, 2022, 2023, 2024],
+    "POPULAÇÃO TOTAL": [107473, 384689, 247764, 234215, 209896],
+    "POPULAÇÃO JOVEM 15-24 ANOS": [9153, 38775, 26203, 22274, 18435],
+    "TAXA POPUL. JOVEM": [0.0852, 0.1008, 0.1058, 0.0951, 0.0878],
+    "Nº CANDIDATOS ANTES CERIMÓNIA": [142, 181, 135, 66, 45],
+    "TAXA ANTES RECRUTAMENTO": [0.0155, 0.0047, 0.0052, 0.00296, 0.00244],
+    "Nº CANDIDATOS APÓS CERIMÓNIA": [181, 144, 165, 68, 33],
+    "TAXA DEPOIS RECRUTAMENTO": [0.0198, 0.0037, 0.0027, 0.00305, 0.0018],
+    "DIFERENÇA ENTRE TAXAS": [0.00426, -0.0090, 0.0011, 0.0000898, -0.0006509]
+})
 
 # Mapa
 df_mapa = pd.DataFrame({
@@ -146,10 +158,8 @@ candidatos_por_ano = {
 }
 
 # ──────────────── definir antes do loop ────────────────
-# ──────────────── antes do app.layout ────────────────
-import plotly.express as px
 
-# … lá em cima, antes do app.layout …
+import plotly.express as px
 
 figs_pizza = {}
 for ano, atividades in atividades_por_ano.items():
@@ -180,8 +190,34 @@ for ano, atividades in atividades_por_ano.items():
 
 # ─────────────────────────────────────────
     
+_th_style = {
+    'fontWeight': 'bold',
+    'textAlign': 'center',
+    'padding': '12px',
+    'backgroundColor': '#ddd',
+    'color': '#333',
+    'borderRadius': '10px'
+}
+
+df_infografico = pd.DataFrame({
+    'Local': [
+        "Trás-os-Montes",
+        "Baixo Vouga",
+        "Lezíria do Tejo",
+        "Minho-Lima",
+        "Beiras e Serra da Estrela"
+    ],
+    'Basic':    ["✓", "✓", "✓", "✗", "✗"],
+    'Standard': ["✓", "✓", "✗", "✗", "✗"],
+    'Premium':  ["✓", "✓", "✓", "✓", "✓"]
+})
+
+cores = ["#d3d275", "#8dc63f", "#00b5c8", "#1f77b4", "#e69f00"]
+
 app.layout = html.Div(style={
-    'backgroundColor': '#556B2F', 'padding': '20px', 'fontFamily': 'Arial, sans-serif'
+    'backgroundColor': '#556B2F',
+    'padding': '20px',
+    'fontFamily': 'Arial, sans-serif'
 }, children=[
     html.H1(
         "CELEBRAÇÕES DO DIA DO EXÉRCITO: IMPACTO NO RECRUTAMENTO",
@@ -196,17 +232,45 @@ app.layout = html.Div(style={
     html.Div([
         html.Label("Selecionar Região:", style={'fontWeight': 'bold', 'fontSize': '18px', 'color': 'white'}),
         dcc.Dropdown(
-    id='grafico-dropdown',
-    options=[{'label': r, 'value': r} for r in regioes] + [{'label': 'Todas as regiões', 'value': 'Todas as regiões'}],
-    value='Trás-os-Montes',  # Valor inicial
-    style={'width': '50%', 'marginBottom': '30px'}
-),
-
+            id='grafico-dropdown',
+            options=[{'label': r, 'value': r} for r in regioes] + [{'label': 'Todas as regiões', 'value': 'Todas as regiões'}],
+            value='Trás-os-Montes',
+            style={'width': '50%', 'marginBottom': '30px'}
+        ),
         dcc.Graph(id='grafico-linha')
     ], style={'marginBottom': '50px'}),
 
-dcc.Graph(id='grafico-mapa', figure=fig_mapa),
+    dcc.Graph(id='grafico-mapa', figure=fig_mapa),
 
+html.Div([
+    html.Label("Tabela de Recrutamento", style={
+        'fontWeight': 'bold', 'fontSize': '20px', 'color': 'white',
+        'marginBottom': '10px'
+    }),
+    dcc.Dropdown(
+        id='dropdown-ano-tabela',
+        options=[{'label': str(ano), 'value': ano} for ano in df_tabela['DATA'].unique()],
+        value=2020,
+        style={'width': '200px', 'marginBottom': '20px'}
+    ),
+    dash_table.DataTable(
+        id='tabela-recrutamento',
+        columns=[{'name': col, 'id': col} for col in df_tabela.columns],
+        data=df_tabela[df_tabela['DATA'] == 2020].to_dict('records'),
+        editable=True,
+        style_table={'overflowX': 'auto'},
+        style_cell={'textAlign': 'center', 'minWidth': '120px', 'padding': '5px'},
+        style_header={'backgroundColor': '#ccc', 'fontWeight': 'bold'},
+    )
+], style={
+    'marginTop': '30px',
+    'backgroundColor': 'white',
+    'padding': '20px',
+    'borderRadius': '10px',
+    'boxShadow': '0 0 10px rgba(0,0,0,0.1)',
+    'maxWidth': '95%',
+    'margin': '0 auto'
+}),
 
     dcc.Graph(id='grafico-barras', figure=fig_barras, style={'marginBottom': '50px'}),
 
@@ -221,8 +285,6 @@ dcc.Graph(id='grafico-mapa', figure=fig_mapa),
         dcc.Graph(id='grafico-disp')
     ], style={'marginBottom': '50px'}),
 
-
-       # Dropdown para escolher o ano da cerimónia (aciona pizza & gauge)
     html.Div([
         html.Label("Selecionar Ano da Cerimónia:", style={
             'fontWeight': 'bold', 'fontSize': '18px', 'color': 'white',
@@ -235,39 +297,27 @@ dcc.Graph(id='grafico-mapa', figure=fig_mapa),
             style={'width': '200px', 'marginBottom': '20px'}
         )
     ], style={'marginBottom': '20px'}),
-   
-    # … logo após o Dropdown de ano …
 
-# … dentro do app.layout, no lugar do seu Div de pizza+gauge …
+    html.Div([
+        html.Div([
+            dcc.Graph(
+                id='grafico-pizza',
+                config={'displayModeBar': False},
+                style={'width': '350px', 'height': '350px'}
+            ),
+            html.Div(id='pizza-legend', style={
+                'width': '350px',
+                'height': '120px',
+                'overflowY': 'auto',
+                'marginTop': '10px'
+            })
+        ], style={
+            'flex': '0 0 350px',
+            'display': 'flex',
+            'flexDirection': 'column',
+            'alignItems': 'center'
+        }),
 
-# … logo após o Div do dropdown de ano …
-
-html.Div(
-    [
-        # coluna da pizza + legenda em baixo
-         html.Div([
-                dcc.Graph(
-                    id='grafico-pizza',
-                    config={'displayModeBar': False},
-                    style={'width': '350px', 'height': '350px'}
-                ),
-                html.Div(
-                    id='pizza-legend',
-                    style={
-                        'width': '350px',
-                        'height': '120px',
-                        'overflowY': 'auto',
-                        'marginTop': '10px'
-                    }
-                )
-            ], style={
-                'flex': '0 0 350px',
-                'display': 'flex',
-                'flexDirection': 'column',
-                'alignItems': 'center'
-            }),
-
-        # coluna do gauge
         html.Div(
             dcc.Graph(
                 id='grafico-gauge',
@@ -280,8 +330,7 @@ html.Div(
                 'alignItems': 'center'
             }
         )
-    ],
-    style={
+    ], style={
         'display': 'flex',
         'justifyContent': 'space-around',
         'backgroundColor': 'white',
@@ -289,10 +338,8 @@ html.Div(
         'borderRadius': '10px',
         'boxShadow': '0 0 10px rgba(0,0,0,0.2)',
         'marginBottom': '50px'
-    }
-),
-
-])  # <--- fecha o app.layout aqui, SEM MAIS html.Div nem style
+    })
+])
 
 # Callbacks
 @app.callback(
@@ -403,6 +450,14 @@ def update_gauge(ano):
         margin={'t':40,'b':20,'l':20,'r':20}
     )
     return fig
+
+@app.callback(
+    Output('tabela-recrutamento', 'data'),
+    Input('dropdown-ano-tabela', 'value')
+)
+def update_tabela(ano):
+    dff = df_tabela[df_tabela['DATA'] == ano]
+    return dff.to_dict('records')
 
 if __name__ == '__main__':
     app.run(debug=True)
