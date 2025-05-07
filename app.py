@@ -1,4 +1,3 @@
-
 import dash
 from dash import dcc, html, dash_table
 from dash.dependencies import Input, Output
@@ -446,6 +445,7 @@ def update_gauge(ano):
         paper_bgcolor='white',
         margin={'t':40,'b':20,'l':20,'r':20}
     )
+    
     return fig
 
 if_name_ == '_main_':
