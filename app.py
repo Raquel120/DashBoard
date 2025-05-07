@@ -448,5 +448,5 @@ def update_gauge(ano):
     )
     return fig
 
-if _name_ == '_main_':
+if_name_ == '_main_':
     app.run(debug=True, host='0.0.0.0', port=5000)
