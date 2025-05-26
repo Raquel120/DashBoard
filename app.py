@@ -135,11 +135,11 @@ df_disp = pd.DataFrame({
 anos = [2020, 2021, 2022, 2023, 2024]
 atividades_por_ano = {
     2020: ["Seminário"],
-    2021: ["OLE", "BFE", "Encontro Gímnico", "Apresentação de Livro", "EXPO"],
-    2022: ["OLE", "BFE", "Encontro Gímnico", "Apresentação de Livro", "EXPO"],
-    2023: ["OLE", "BFE", "Seminário", "Encontro Gímnico", "Apresentação de Livro", "EXPO", "Música de Câmara",
+    2021: ["OLE", "BSE", "Encontro Gímnico", "Apresentação de Livro", "EXPO"],
+    2022: ["OLE", "BSE", "Encontro Gímnico", "Apresentação de Livro", "EXPO"],
+    2023: ["OLE", "BSE", "Seminário", "Encontro Gímnico", "Apresentação de Livro", "EXPO", "Música de Câmara",
            "Demonstração Cinotécnica", "Salto de Paraquedistas Noturno", "Fogo de Artifício", "Corrida Solidária", "Concerto Jovem"],
-    2024: ["BFE", "EXPO", "Salto de Paraquedistas Noturno", "Radical Adventure", "Concerto Jovem"]
+    2024: ["BSE", "EXPO", "Salto de Paraquedistas Noturno", "Radical Adventure", "Concerto Jovem"]
 }
 
 candidatos_por_ano = {
